@@ -34,6 +34,9 @@ function GlobalNav() {
         <Link href="/team" className="hover:text-white transition">
           NBA Teams
         </Link>
+        <Link href="/rankings" className="hover:text-white transition">
+          Team Rankings
+        </Link>
       </div>
     </nav>
   );
