@@ -31,6 +31,9 @@ function GlobalNav() {
         <Link href="/leaderboard" className="hover:text-white transition">
           Game Vault
         </Link>
+        <Link href="/team" className="hover:text-white transition">
+          NBA Teams
+        </Link>
       </div>
     </nav>
   );
