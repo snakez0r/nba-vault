@@ -3,8 +3,6 @@
 import Link from "next/link";
 
 // For this example, use ESPN team logos (public CDN).
-// Logo URLs use format: https://a.espncdn.com/i/teamlogos/nba/500/[teamLogoSlug].png
-// Note: ESPN logos often use slightly different abbreviations than common NBA abbreviations.
 const teamLogoMap: { [abbr: string]: string } = {
   ATL: "atl",
   BOS: "bos",
@@ -15,7 +13,7 @@ const teamLogoMap: { [abbr: string]: string } = {
   DAL: "dal",
   DEN: "den",
   DET: "det",
-  GSW: "gs",      // ESPN uses "gs" for Golden State
+  GSW: "gs",
   HOU: "hou",
   IND: "ind",
   LAC: "lac",
@@ -24,18 +22,18 @@ const teamLogoMap: { [abbr: string]: string } = {
   MIA: "mia",
   MIL: "mil",
   MIN: "min",
-  NOP: "no",      // New Orleans
-  NYK: "ny",      // ESPN uses "ny" for New York
+  NOP: "no",
+  NYK: "ny",
   OKC: "okc",
   ORL: "orl",
   PHI: "phi",
   PHX: "phx",
   POR: "por",
   SAC: "sac",
-  SAS: "sa",      // ESPN uses "sa" for San Antonio
+  SAS: "sa",
   TOR: "tor",
-  UTA: "utah",    // ESPN uses "utah" for Utah Jazz
-  WAS: "wsh",     // ESPN uses "wsh" for Washington
+  UTA: "utah",
+  WAS: "wsh",
 };
 
 const teams = [
@@ -48,7 +46,7 @@ const teams = [
   { name: "Dallas Mavericks", abbr: "DAL" },
   { name: "Denver Nuggets", abbr: "DEN" },
   { name: "Detroit Pistons", abbr: "DET" },
-  { name: "Golden State Warriors", abbr: "GS" },    // ESPN uses "gs"
+  { name: "Golden State Warriors", abbr: "GS" },
   { name: "Houston Rockets", abbr: "HOU" },
   { name: "Indiana Pacers", abbr: "IND" },
   { name: "Los Angeles Clippers", abbr: "LAC" },
@@ -57,18 +55,18 @@ const teams = [
   { name: "Miami Heat", abbr: "MIA" },
   { name: "Milwaukee Bucks", abbr: "MIL" },
   { name: "Minnesota Timberwolves", abbr: "MIN" },
-  { name: "New Orleans Pelicans", abbr: "NO" },     // ESPN uses "no"
-  { name: "New York Knicks", abbr: "NY" },          // ESPN uses "ny"
+  { name: "New Orleans Pelicans", abbr: "NO" },
+  { name: "New York Knicks", abbr: "NY" },
   { name: "Oklahoma City Thunder", abbr: "OKC" },
   { name: "Orlando Magic", abbr: "ORL" },
   { name: "Philadelphia 76ers", abbr: "PHI" },
   { name: "Phoenix Suns", abbr: "PHX" },
   { name: "Portland Trail Blazers", abbr: "POR" },
   { name: "Sacramento Kings", abbr: "SAC" },
-  { name: "San Antonio Spurs", abbr: "SA" },        // ESPN uses "sa"
+  { name: "San Antonio Spurs", abbr: "SA" },
   { name: "Toronto Raptors", abbr: "TOR" },
-  { name: "Utah Jazz", abbr: "UTAH" },              // ESPN uses "utah"
-  { name: "Washington Wizards", abbr: "WSH" },      // ESPN uses "wsh"
+  { name: "Utah Jazz", abbr: "UTAH" },
+  { name: "Washington Wizards", abbr: "WSH" },
 ];
 
 function getTeamLogoUrl(abbr: string) {
@@ -78,31 +76,84 @@ function getTeamLogoUrl(abbr: string) {
 
 export default function TeamSelectPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-200 flex flex-col items-center py-20">
-      <h1 className="text-4xl font-black mb-2 text-white">NBA Teams</h1>
-      <p className="text-zinc-400 mb-8 text-center max-w-md">
+    <div className="min-h-screen bg-[#0a0a0a] text-zinc-200 flex flex-col items-center px-2 sm:px-4 py-8 sm:py-14 md:py-20">
+      <h1 className="text-2xl xs:text-3xl sm:text-4xl font-black mb-2 text-white text-center w-full">
+        NBA Teams
+      </h1>
+      <p className="text-zinc-400 mb-6 sm:mb-8 text-center max-w-md w-full px-1 text-sm sm:text-base">
         Select a team to explore their games and players.
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-4xl">
+      <div className="
+        grid 
+        grid-cols-2 
+        xs:grid-cols-2 
+        sm:grid-cols-3 
+        md:grid-cols-4 
+        lg:grid-cols-5 
+        gap-3 
+        sm:gap-5 
+        md:gap-6 
+        w-full 
+        max-w-4xl
+      ">
         {teams.map((team) => (
           <Link
             key={team.abbr}
             href={`/team/${team.abbr}`}
-            className="group bg-white/[0.04] border border-white/10 hover:bg-amber-500/10 hover:border-amber-400/30 rounded-xl px-6 py-5 flex items-center gap-4 transition-colors shadow-md"
+            className="
+              group 
+              bg-white/[0.04] 
+              border 
+              border-white/10 
+              hover:bg-amber-500/10 
+              hover:border-amber-400/30 
+              rounded-xl 
+              px-2 py-3 
+              sm:px-4 sm:py-4 
+              flex 
+              items-center 
+              gap-2 
+              sm:gap-3 
+              md:gap-4 
+              transition-colors 
+              shadow-md
+              w-full
+            "
+            style={{ minWidth: 0 }}
           >
-            <div className="w-12 h-12 rounded-full bg-black/80 flex items-center justify-center border border-white/10 overflow-hidden group-hover:bg-amber-500 transition-colors">
+            <div className="
+              w-9 h-9 
+              sm:w-12 sm:h-12 
+              rounded-full 
+              bg-black/80 
+              flex items-center justify-center 
+              border border-white/10 
+              overflow-hidden 
+              group-hover:bg-amber-500 
+              transition-colors
+              flex-shrink-0
+            ">
               <img
                 src={getTeamLogoUrl(team.abbr)}
                 alt={`${team.name} logo`}
-                className="w-10 h-10 object-contain"
+                className="w-7 h-7 sm:w-10 sm:h-10 object-contain"
                 loading="lazy"
+                draggable={false}
               />
             </div>
-            <div>
-              <div className="font-bold text-white text-lg group-hover:text-amber-400 transition-colors">
+            <div className="truncate min-w-0">
+              <div className="
+                font-bold 
+                text-white 
+                text-base 
+                sm:text-lg
+                truncate
+                group-hover:text-amber-400 
+                transition-colors
+              ">
                 {team.name}
               </div>
-              <div className="text-xs text-zinc-500 font-mono mt-0.5">{team.abbr}</div>
+              <div className="text-[11px] sm:text-xs text-zinc-500 font-mono mt-0.5 uppercase tracking-wide">{team.abbr}</div>
             </div>
           </Link>
         ))}
