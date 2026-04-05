@@ -23,9 +23,12 @@ interface PlayerStat {
   masterclasses: number;
   totalPts: number;
   highestPts: number;
+  totalTrueScore: number;
   avgWatch: number;
   avgPts: number;
+  avgTrueScore: number;
   electricScore: number;
+  bestGame?: any; // ADDED: Top Performance (was Most Watchable Game)
 }
 
 function getPlayerHeadshotUrls(name: string) {
@@ -54,7 +57,7 @@ function getPlayerHeadshotUrls(name: string) {
   const nbaCdnSlug = `${last.charAt(0).toUpperCase()}${last.slice(1)}_${first.charAt(0).toUpperCase()}${first.slice(1)}`;
   nbaCdnUrls.push(`https://cdn.nba.com/headshots/nba/latest/260x190/${nbaCdnSlug}.png`);
   nbaCdnUrls.push(`https://cdn.nba.com/headshots/nba/latest/260x190/${name.replace(/\./g, "").replace(/ /g, "_")}.png`);
-  
+
   // Try both BBRef and all NBA CDN options (NBA playerId first, then others)
   return [...nbaCdnUrls, ...bbrefHeadshots];
 }
@@ -140,9 +143,10 @@ export default function MVPIndexPage() {
 
   useEffect(() => {
     async function fetchAndAggregatePlayers() {
+      // Expanded select to get matchup/team/score info for best game display (now include id for linking)
       const { data, error } = await supabase
         .from("nba_games")
-        .select("top_player_name, top_player_pts, watchability_score");
+        .select("id, top_player_name, top_player_pts, watchability_score, true_player_score, home_team, away_team, home_score, away_score");
 
       if (error || !data) {
         setLoading(false);
@@ -163,11 +167,45 @@ export default function MVPIndexPage() {
             masterclasses: 0,
             totalPts: 0,
             highestPts: 0,
+            totalTrueScore: 0,
+            bestGame: undefined,
           };
         }
         playerMap[name].games += 1;
         playerMap[name].totalWatch += game.watchability_score || 0;
         playerMap[name].totalPts += game.top_player_pts || 0;
+        playerMap[name].totalTrueScore += game.true_player_score || 0;
+
+        // --- REWRITE LOGIC: Top Performance, not most watchable game ---
+        // Keep track of bestGame: pick the one with the highest true_player_score,
+        // fall back to top_player_pts on tie or missing true_player_score.
+
+        const current = game;
+        const best = playerMap[name].bestGame;
+
+        function isBetterPerformance(current: any, best: any): boolean {
+          // Handle if best is undefined (always take current)
+          if (!best) return true;
+          const curTrue = typeof current.true_player_score === "number" ? current.true_player_score : null;
+          const bestTrue = typeof best.true_player_score === "number" ? best.true_player_score : null;
+          if (curTrue !== null && bestTrue !== null) {
+            if (curTrue > bestTrue) return true;
+            if (curTrue < bestTrue) return false;
+            // Equal, fall back to top_player_pts
+          } else if (curTrue !== null && bestTrue === null) {
+            return true;
+          } else if (curTrue === null && bestTrue !== null) {
+            return false;
+          }
+          // Both missing or tied, fall back to points
+          const curPts = typeof current.top_player_pts === "number" ? current.top_player_pts : 0;
+          const bestPts = typeof best.top_player_pts === "number" ? best.top_player_pts : 0;
+          return curPts > bestPts;
+        }
+
+        if (isBetterPerformance(current, best)) {
+          playerMap[name].bestGame = { ...game };
+        }
 
         if (game.watchability_score >= 80) playerMap[name].aPlusGames += 1;
         if (game.top_player_pts >= 40) playerMap[name].masterclasses += 1;
@@ -181,8 +219,10 @@ export default function MVPIndexPage() {
         .map((p) => {
           const avgWatch = Math.round(p.totalWatch / p.games);
           const avgPts = Math.round(p.totalPts / p.games);
-          const electricScore = avgWatch + (p.aPlusGames * 5) + (p.masterclasses * 5);
-          return { ...p, avgWatch, avgPts, electricScore } as PlayerStat;
+          const avgTrueScore = Math.round(p.totalTrueScore / p.games);
+          // Electric score: strictly avgTrueScore + (masterclasses * 5) + (aPlusGames * 2)
+          const electricScore = avgTrueScore + (p.masterclasses * 5) + (p.aPlusGames * 2);
+          return { ...p, avgWatch, avgPts, avgTrueScore, electricScore } as PlayerStat;
         })
         .sort((a, b) => b.electricScore - a.electricScore);
 
@@ -219,6 +259,8 @@ export default function MVPIndexPage() {
   }
 
   function PlayerTrophyCase({ player }: { player: PlayerStat }) {
+    const bestGame = player.bestGame;
+
     return (
       <div className="w-full max-w-lg space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Header */}
@@ -236,6 +278,16 @@ export default function MVPIndexPage() {
           <div>
             <h2 className="text-4xl font-black text-white tracking-tight">{player.name}</h2>
             <p className="text-amber-500 font-mono mt-2">Electric Index: {player.electricScore}</p>
+            <div className="mt-2 flex flex-col gap-1 items-center justify-center">
+              <div className="text-white text-base font-mono">
+                <span className="text-zinc-400">Avg True Score: </span>
+                <span className="font-bold text-amber-400">{player.avgTrueScore}</span>
+              </div>
+              <div className="text-zinc-300 text-base font-mono">
+                <span className="text-zinc-400">PPG: </span>
+                <span className="font-bold text-white">{player.avgPts}</span>
+              </div>
+            </div>
           </div>
         </div>
         {/* Trophy Case Grid */}
@@ -261,6 +313,47 @@ export default function MVPIndexPage() {
             <div className="text-xs text-zinc-500 uppercase tracking-widest mt-1">Season High (Pts)</div>
           </div>
         </div>
+        {/* Top Performance Game Card */}
+        {bestGame && (
+          <a
+            href={typeof bestGame.id !== "undefined" ? `/game/${bestGame.id}` : "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 bg-white/[0.025] border border-white/8 rounded-2xl py-6 px-6 flex flex-col gap-2 shadow-inner ring-1 ring-amber-400/5 transition hover:scale-[1.015] focus:outline-amber-400/70 focus:ring-2 cursor-pointer"
+            style={{ textDecoration: 'none' }}
+            title="Open game details"
+          >
+            <div className="flex items-center gap-3 mb-2 justify-between">
+              <div className="uppercase text-xs font-semibold text-amber-400 tracking-widest">Top Performance</div>
+              <div className="rounded-full bg-amber-500/10 text-amber-400 px-3 py-1 text-xs font-mono font-semibold shadow-inner border border-amber-400/10">
+                {typeof bestGame.watchability_score === "number" ? `Watchability: ${bestGame.watchability_score}` : null}
+              </div>
+            </div>
+            <div className="flex flex-col md:flex-row md:items-center md:gap-6 gap-1">
+              <div className="flex flex-col flex-1 min-w-0">
+                <div className="text-white text-base font-bold truncate">
+                  {bestGame.away_team} <span className="text-zinc-400 font-light">vs</span> {bestGame.home_team}
+                </div>
+                <div className="text-sm font-mono text-zinc-400 mt-0.5">
+                  Final: 
+                  <span className="ml-1 text-white font-semibold">
+                    {typeof bestGame.away_score === "number" ? bestGame.away_score : "--"}
+                  </span>
+                  <span className="mx-1 text-zinc-600 font-bold">-</span>
+                  <span className="text-white font-semibold">
+                    {typeof bestGame.home_score === "number" ? bestGame.home_score : "--"}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-xs text-zinc-400">Player Pts</span>
+                <span className="text-2xl font-extrabold text-amber-400 drop-shadow" title="Points">
+                  {typeof bestGame.top_player_pts === "number" ? bestGame.top_player_pts : "--"}
+                </span>
+              </div>
+            </div>
+          </a>
+        )}
       </div>
     );
   }
@@ -301,12 +394,21 @@ export default function MVPIndexPage() {
                   size={36}
                   className="shrink-0"
                 />
-                <div className="flex-1">
-                  <div className={`font-bold ${isPodium ? 'text-white' : 'text-zinc-300'} text-sm md:text-base`}>
+                <div className="flex-1 min-w-0">
+                  <div className={`font-bold ${isPodium ? 'text-white' : 'text-zinc-300'} text-sm md:text-base truncate`}>
                     {player.name}
                   </div>
-                  <div className="text-[11px] md:text-xs text-zinc-500">
-                    Led {player.games} games • Season High {player.highestPts} pts
+                  <div className="text-[11px] md:text-xs text-zinc-500 flex flex-col leading-tight gap-[1px]">
+                    <span>
+                      Led {player.games} games • Season High {player.highestPts} pts
+                    </span>
+                    <span>
+                      <span className="text-zinc-400">Avg True Score: </span>
+                      <span className="text-amber-400 font-semibold">{player.avgTrueScore}</span>
+                      <span className="mx-2 text-zinc-500">|</span>
+                      <span className="text-zinc-400">PPG: </span>
+                      <span className="text-white font-semibold">{player.avgPts}</span>
+                    </span>
                   </div>
                 </div>
                 <div className="text-right hidden xs:block">

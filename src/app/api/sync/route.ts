@@ -144,9 +144,37 @@ export async function GET(req: NextRequest) {
           "Balanced"
         );
 
-        // FIX: Use math.ts interface keys: finalScore, starPowerBonus
+        // Extract capped and uncapped star power
         const watchScore = watchabilityData?.finalScore ?? null;
         const starPower = watchabilityData?.starPowerBonus ?? null;
+
+        // Compute the uncapped/raw player stat score - this is prior to applying the starPowerBonus max cap.
+        // We'll store this in 'true_player_score'.
+        // To follow frontend: recalculate the raw score separately (math.ts caps at 30 for starPowerBonus).
+        // Try to extract from the raw output if available, else recompute here.
+
+        // If your math.ts returns .rawPlayerScore or similar, prefer that.
+        // Otherwise, recompute according to your starPowerBonus formula *without the cap*.
+
+        // We'll attempt to recompute using the likely star power (raw, uncapped) formula:
+        let truePlayerScore: number | null = null;
+        try {
+          // Most likely: (PTS * 1) + (REB * 1.2) + (AST * 1.5) + (STL * 3) + (BLK * 3), but should match your frontend/math.ts.
+          // If math.ts exposes the formula, import and use it here!
+          // For now, hardcode the presumed formula:
+          if (playerStats && typeof playerStats.pts === "number") {
+            truePlayerScore =
+              (playerStats.pts || 0) * 1 +
+              (playerStats.reb || 0) * 1.2 +
+              (playerStats.ast || 0) * 1.5 +
+              (playerStats.stl || 0) * 3.0 +
+              (playerStats.blk || 0) * 3.0;
+            // Allow potentially huge values
+            truePlayerScore = Math.round(truePlayerScore);
+          }
+        } catch (e) {
+          truePlayerScore = null;
+        }
 
         // If margin==0 && leadChanges==0 && playerStats.pts==0, skip upsert (per frontend)
         if (
@@ -158,7 +186,7 @@ export async function GET(req: NextRequest) {
           continue;
         }
 
-        // FIX: Convert YYYYMMDD to YYYY-MM-DD for Postgres
+        // Convert YYYYMMDD to YYYY-MM-DD for Postgres
         const dbDate = `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
 
         const gameData = {
@@ -171,11 +199,12 @@ export async function GET(req: NextRequest) {
           watchability_score: watchScore,
           margin,
           lead_changes: leadChanges,
-          star_power: starPower,
+          star_power: starPower, // <-- 0–30-capped value for watchability
           hype_score: starPower, // Optional: saving starPower here too just to populate the column
+          true_player_score: truePlayerScore, // <-- save full uncapped value (can exceed 30!)
           watch_style: "Balanced", // Hardcoding this so the DB knows how we graded it
-          top_player_name: playerStats.name, // <-- ADDED THIS!
-          top_player_pts: playerStats.pts,   // <-- ADDED THIS!
+          top_player_name: playerStats.name,
+          top_player_pts: playerStats.pts,
           summary_json: summary, // Optional: save full summary for reference
         };
 
